@@ -7,12 +7,9 @@ pipeline {
         AWS_REGION = "eu-north-1"
         AWS_ECR_REPO_BACKEND = "886011807844.dkr.ecr.eu-north-1.amazonaws.com/travel-backend"
         AWS_ECR_REPO_FRONTEND = "886011807844.dkr.ecr.eu-north-1.amazonaws.com/travel-frontend"
-        // AWS credentials from Jenkins Credentials (add in Jenkins > Credentials)
-        AWS_CREDS = credentials('aws-creds')
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 echo "Cloning repository..."
@@ -30,41 +27,37 @@ pipeline {
             }
         }
 
-       stage('Push Docker Images to AWS ECR') {
-    steps {
-        // Use withCredentials to set AWS environment variables for the shell
-        withCredentials([usernamePassword(credentialsId: 'aws-creds', 
-                                         usernameVariable: 'AWS_ACCESS_KEY_ID', 
-                                         passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-            sh '''
-                # Login to ECR
-                aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ECR_REPO_BACKEND
-                aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ECR_REPO_FRONTEND
+        stage('Push Docker Images to AWS ECR') {
+            steps {
+                echo "Pushing Docker images to AWS ECR..."
+                // This withAWS block automatically sets AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY from the AWS Credentials type
+                withAWS(credentials: 'aws-creds', region: "${AWS_REGION}") {
+                    sh '''
+                        # Login to ECR
+                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ECR_REPO_BACKEND
+                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ECR_REPO_FRONTEND
 
-                # Tag and push backend image
-                docker tag $BACKEND_IMAGE:latest $AWS_ECR_REPO_BACKEND:latest
-                docker push $AWS_ECR_REPO_BACKEND:latest
+                        # Tag and push backend image
+                        docker tag $BACKEND_IMAGE:latest $AWS_ECR_REPO_BACKEND:latest
+                        docker push $AWS_ECR_REPO_BACKEND:latest
 
-                # Tag and push frontend image
-                docker tag $FRONTEND_IMAGE:latest $AWS_ECR_REPO_FRONTEND:latest
-                docker push $AWS_ECR_REPO_FRONTEND:latest
-            '''
+                        # Tag and push frontend image
+                        docker tag $FRONTEND_IMAGE:latest $AWS_ECR_REPO_FRONTEND:latest
+                        docker push $AWS_ECR_REPO_FRONTEND:latest
+                    '''
+                }
+            }
         }
-    }
-}
-
 
         stage('Deploy to AWS ECS') {
             steps {
                 echo "Deploying to ECS..."
-                sh '''
-                    # Export AWS credentials for ECS commands
-                    export AWS_ACCESS_KEY_ID=$AWS_CREDS_USR
-                    export AWS_SECRET_ACCESS_KEY=$AWS_CREDS_PSW
-
-                    # Replace <cluster_name> and <service_name> with your ECS values
-                    aws ecs update-service --cluster <cluster_name> --service <service_name> --force-new-deployment --region $AWS_REGION
-                '''
+                withAWS(credentials: 'aws-creds', region: "${AWS_REGION}") {
+                    sh '''
+                        # Replace <cluster_name> and <service_name> with your ECS values
+                        aws ecs update-service --cluster <cluster_name> --service <service_name> --force-new-deployment --region $AWS_REGION
+                    '''
+                }
             }
         }
     }
