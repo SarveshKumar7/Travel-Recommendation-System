@@ -4,9 +4,9 @@ pipeline {
     environment {
         BACKEND_IMAGE = "travel-backend"
         FRONTEND_IMAGE = "travel-frontend"
-        AWS_REGION = "us-east-1"                     // replace with your AWS region
-        AWS_ECR_REPO_BACKEND = "your-backend-ecr-url"   // replace with your backend ECR repo
-        AWS_ECR_REPO_FRONTEND = "your-frontend-ecr-url" // replace with your frontend ECR repo
+        AWS_REGION = "eu-north-1"                     // replace with your AWS region
+        AWS_ECR_REPO_BACKEND = "886011807844.dkr.ecr.eu-north-1.amazonaws.com/travel-backend"   // replace with your backend ECR repo
+        AWS_ECR_REPO_FRONTEND = "886011807844.dkr.ecr.eu-north-1.amazonaws.com/travel-frontend" // replace with your frontend ECR repo
     }
 
     stages {
