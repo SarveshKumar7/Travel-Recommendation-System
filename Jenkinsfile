@@ -34,6 +34,10 @@ pipeline {
             steps {
                 echo "Pushing Docker images to AWS ECR..."
                 sh '''
+                    # Export AWS credentials so aws-cli can use them
+                    export AWS_ACCESS_KEY_ID=$AWS_CREDS_USR
+                    export AWS_SECRET_ACCESS_KEY=$AWS_CREDS_PSW
+
                     # Login to ECR
                     aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ECR_REPO_BACKEND
                     aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ECR_REPO_FRONTEND
@@ -53,6 +57,10 @@ pipeline {
             steps {
                 echo "Deploying to ECS..."
                 sh '''
+                    # Export AWS credentials for ECS commands
+                    export AWS_ACCESS_KEY_ID=$AWS_CREDS_USR
+                    export AWS_SECRET_ACCESS_KEY=$AWS_CREDS_PSW
+
                     # Replace <cluster_name> and <service_name> with your ECS values
                     aws ecs update-service --cluster <cluster_name> --service <service_name> --force-new-deployment --region $AWS_REGION
                 '''
