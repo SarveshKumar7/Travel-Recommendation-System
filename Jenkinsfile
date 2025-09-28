@@ -30,7 +30,7 @@ pipeline {
         stage('Push Docker Images to AWS ECR') {
             steps {
                 echo "Pushing Docker images to AWS ECR..."
-                // This withAWS block automatically sets AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY from the AWS Credentials type
+                // Using AWS credentials stored in Jenkins
                 withAWS(credentials: 'aws-creds', region: "${AWS_REGION}") {
                     sh '''
                         # Login to ECR
@@ -49,15 +49,20 @@ pipeline {
             }
         }
 
-        stage('Deploy to AWS ECS') {
+        stage('Run Docker Containers (Optional)') {
             steps {
-                echo "Deploying to ECS..."
-                withAWS(credentials: 'aws-creds', region: "${AWS_REGION}") {
-                    sh '''
-                        # Replace <cluster_name> and <service_name> with your ECS values
-                        aws ecs update-service --cluster <cluster_name> --service <service_name> --force-new-deployment --region $AWS_REGION
-                    '''
-                }
+                echo "Running Docker containers locally..."
+                sh '''
+                    # Stop existing containers if running
+                    docker rm -f backend || true
+                    docker rm -f frontend || true
+
+                    # Run backend container
+                    docker run -d --name backend -p 5000:5000 $BACKEND_IMAGE:latest
+
+                    # Run frontend container
+                    docker run -d --name frontend -p 3000:3000 $FRONTEND_IMAGE:latest
+                '''
             }
         }
     }
