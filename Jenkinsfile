@@ -30,28 +30,29 @@ pipeline {
             }
         }
 
-        stage('Push Docker Images to AWS ECR') {
-            steps {
-                echo "Pushing Docker images to AWS ECR..."
-                sh '''
-                    # Export AWS credentials so aws-cli can use them
-                    export AWS_ACCESS_KEY_ID=$AWS_CREDS_USR
-                    export AWS_SECRET_ACCESS_KEY=$AWS_CREDS_PSW
+       stage('Push Docker Images to AWS ECR') {
+    steps {
+        // Use withCredentials to set AWS environment variables for the shell
+        withCredentials([usernamePassword(credentialsId: 'aws-creds', 
+                                         usernameVariable: 'AWS_ACCESS_KEY_ID', 
+                                         passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+            sh '''
+                # Login to ECR
+                aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ECR_REPO_BACKEND
+                aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ECR_REPO_FRONTEND
 
-                    # Login to ECR
-                    aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ECR_REPO_BACKEND
-                    aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ECR_REPO_FRONTEND
+                # Tag and push backend image
+                docker tag $BACKEND_IMAGE:latest $AWS_ECR_REPO_BACKEND:latest
+                docker push $AWS_ECR_REPO_BACKEND:latest
 
-                    # Tag and push backend image
-                    docker tag $BACKEND_IMAGE:latest $AWS_ECR_REPO_BACKEND:latest
-                    docker push $AWS_ECR_REPO_BACKEND:latest
-
-                    # Tag and push frontend image
-                    docker tag $FRONTEND_IMAGE:latest $AWS_ECR_REPO_FRONTEND:latest
-                    docker push $AWS_ECR_REPO_FRONTEND:latest
-                '''
-            }
+                # Tag and push frontend image
+                docker tag $FRONTEND_IMAGE:latest $AWS_ECR_REPO_FRONTEND:latest
+                docker push $AWS_ECR_REPO_FRONTEND:latest
+            '''
         }
+    }
+}
+
 
         stage('Deploy to AWS ECS') {
             steps {
